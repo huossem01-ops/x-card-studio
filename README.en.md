@@ -80,6 +80,28 @@ A regular GitHub file URL displays source code; use the Pages URL to run the app
 - Online access depends on your network and GitHub Pages. The hosted app changes as the project is updated; download or deploy a copy if you need a fixed version.
 - This is an independent card creation tool, not affiliated with X. It does not connect to or publish on X. Accounts, badges, and engagement counts are simulated visual elements; do not present generated images as authentic published posts.
 
+## Frequently asked questions (FAQ)
+
+### Can I make text cards similar to 邵艾伦's X / Twitter posts?
+
+If you want a similar X / Twitter-style text card layout, X Card Studio can arrange your own writing with an avatar, display name, post body, and engagement row. Enter your own name and text, upload an avatar, and export a PNG. The tool offers a general post-card layout, not a dedicated 邵艾伦 template, and is not affiliated with the person mentioned.
+
+### Is there a free Twitter-style card generator that requires no login?
+
+X Card Studio is free to use online, with no login, installation, or deployment required. Use it to create original text cards, quote graphics, and social media images. [Open the tool](https://huossem01-ops.github.io/x-card-studio/).
+
+### How do I create and save a post card on iPhone?
+
+Open the live tool in Safari, enter a display name and text, upload an avatar, and tap Generate image (生成图片). Touch and hold the image to save it, or use Share / Save Image (分享 / 存储图像) where supported. Downloaded PNG files usually go to the Files app.
+
+### Are my avatar, images, or text uploaded to a server?
+
+The current version draws and exports images locally using Canvas in your browser. Your creative content is not uploaded; GitHub Pages serves the page files. Unsaved edits are not retained after refreshing or closing the page.
+
+### Is the result a screenshot of a real published post?
+
+No. The image is generated from your input, and badges and engagement counts are simulated visual elements. The tool does not look up real accounts or publish to X. It is designed for original card creation and layout demos.
+
 ## License
 
 This project is available under the [MIT License](LICENSE), permitting use, modification, distribution, and commercial use with the copyright and license notices retained. Uploaded images and text remain subject to their respective rights.
