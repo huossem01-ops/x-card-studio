@@ -3,11 +3,14 @@
 **中文** | [English](README.en.md)
 
 [![在线使用](https://img.shields.io/badge/在线使用-GitHub%20Pages-238636)](https://huossem01-ops.github.io/x-card-studio/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![技术栈](https://img.shields.io/badge/技术栈-HTML%20%2B%20CSS%20%2B%20JavaScript-f7df1e)
 ![图片导出](https://img.shields.io/badge/导出-PNG-1d9bf0)
 ![本地处理](https://img.shields.io/badge/图片处理-浏览器本地-8250df)
 
 在浏览器里，把文字制作成简洁的 X 风格推文卡片。手机友好，实时预览，一键生成 PNG。
+
+![X Card Studio 操作演示：编辑账号和正文、切换主题、生成 PNG](assets/demo.gif)
 
 ## 直接使用，无需部署
 
@@ -76,3 +79,7 @@
 - 当前没有自动保存和离线缓存；刷新或关闭页面前请先导出图片。添加到主屏幕不代表支持离线使用。
 - 在线访问依赖网络和 GitHub Pages；在线版本会随项目更新，需要固定版本时可下载或自行部署。
 - 这是独立的卡片制作工具，不隶属于 X，也不连接或发布到 X。账号、认证与互动数据是模拟视觉元素，请勿将生成图片冒充为真实发布记录。
+
+## 开源许可
+
+本项目采用 [MIT License](LICENSE)，允许使用、修改、分发和商用，须保留版权及许可声明。上传的头像、图片和文字仍受其各自权利约束。

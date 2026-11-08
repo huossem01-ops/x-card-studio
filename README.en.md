@@ -3,11 +3,14 @@
 [中文](README.md) | **English**
 
 [![Try online](https://img.shields.io/badge/Try%20online-GitHub%20Pages-238636)](https://huossem01-ops.github.io/x-card-studio/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Built with](https://img.shields.io/badge/Built%20with-HTML%20%2B%20CSS%20%2B%20JavaScript-f7df1e)
 ![Export](https://img.shields.io/badge/Export-PNG-1d9bf0)
 ![Local processing](https://img.shields.io/badge/Image%20processing-In%20your%20browser-8250df)
 
 Turn your words into clean, X-style post cards in your browser. A mobile-friendly editor with live previews and PNG export.
+
+![X Card Studio demo: customize a profile, write a post, switch themes, and generate a PNG](assets/demo.gif)
 
 ## Try it now — no deployment needed
 
@@ -76,3 +79,7 @@ A regular GitHub file URL displays source code; use the Pages URL to run the app
 - There is currently no autosave or offline cache. Export before refreshing or closing the page. Adding the app to your home screen does not enable offline use.
 - Online access depends on your network and GitHub Pages. The hosted app changes as the project is updated; download or deploy a copy if you need a fixed version.
 - This is an independent card creation tool, not affiliated with X. It does not connect to or publish on X. Accounts, badges, and engagement counts are simulated visual elements; do not present generated images as authentic published posts.
+
+## License
+
+This project is available under the [MIT License](LICENSE), permitting use, modification, distribution, and commercial use with the copyright and license notices retained. Uploaded images and text remain subject to their respective rights.
