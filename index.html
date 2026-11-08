@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>X 推文卡片生成器</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+    background:#f2f4f7;color:#0f1419;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:calc(88px + env(safe-area-inset-bottom));
+  }
+  .app{max-width:560px;margin:0 auto;padding:0 12px}
+
+  .topbar{
+    position:sticky;top:0;z-index:30;
+    background:rgba(242,244,247,.9);
+    backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);
+    padding:11px 0 9px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  }
+  .brand{display:flex;align-items:center;gap:8px;font-size:16.5px;font-weight:700;letter-spacing:-.2px}
+  .brand .x{width:25px;height:25px;display:grid;place-items:center;background:#0f1419;border-radius:7px;flex:0 0 auto}
+  .brand .x svg{width:14px;height:14px;fill:#fff}
+  .brand small{font-weight:400;font-size:11.5px;color:#93a1af;margin-left:1px;letter-spacing:0}
+  .hd-btn{
+    border:0;background:#e6ebf1;color:#0f1419;font-family:inherit;font-size:12.5px;font-weight:600;
+    padding:7px 11px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:5px;
+  }
+  .hd-btn:active{background:#dbe2ea}
+  .hd-btn svg{width:13px;height:13px}
+
+  .preview-wrap{position:sticky;top:52px;z-index:20;background:#f2f4f7;padding-bottom:12px}
+  .preview-wrap::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;height:14px;
+    background:linear-gradient(to bottom,rgba(242,244,247,0),#f2f4f7);
+    pointer-events:none;
+  }
+  .preview-card{
+    background:#fff;border-radius:15px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(15,20,25,.05),0 10px 28px -10px rgba(15,20,25,.16);
+    border:1px solid rgba(15,20,25,.06);
+    max-height:38vh;overflow-y:auto;overscroll-behavior:contain;
+    transition:max-height .28s cubic-bezier(.3,.9,.3,1);
+  }
+  /* 向下滚动时收缩预览，避免遮挡表单 */
+  .preview-wrap.shrink .preview-card{max-height:17vh}
+  .preview-card::-webkit-scrollbar{width:0}
+  #stage{display:block;width:100%;height:auto}
+
+  .panel{display:flex;flex-direction:column;gap:10px;padding-top:2px}
+  .card{background:#fff;border-radius:15px;padding:14px;box-shadow:0 1px 2px rgba(15,20,25,.04);border:1px solid rgba(15,20,25,.05)}
+  .card-h{
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:11.5px;font-weight:700;color:#8b98a5;letter-spacing:.07em;
+    text-transform:uppercase;margin-bottom:11px;
+  }
+  .card-h em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:500;color:#b9c3ce;font-size:11.5px}
+  .field{margin-bottom:11px}
+  .field:last-child{margin-bottom:0}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  label{display:block;font-size:12.5px;color:#6b7a8c;margin-bottom:5px;font-weight:500}
+  input[type=text],input[type=number],textarea{
+    width:100%;border:1px solid #e4e8ee;background:#fafbfc;border-radius:10px;
+    padding:10px 11px;font-size:16px;font-family:inherit;color:#0f1419;
+    transition:border-color .15s,background .15s,box-shadow .15s;-webkit-appearance:none;
+  }
+  input[type=text]:focus,input[type=number]:focus,textarea:focus{
+    outline:none;border-color:#1d9bf0;background:#fff;box-shadow:0 0 0 3px rgba(29,155,240,.11)
+  }
+  input[type=number]{-moz-appearance:textfield;font-variant-numeric:tabular-nums}
+  input[type=number]::-webkit-inner-spin-button{display:none}
+  textarea{resize:vertical;min-height:104px;line-height:1.55}
+  ::placeholder{color:#b8c2cd}
+
+  .switch-row{display:flex;align-items:center;justify-content:space-between;padding:2px 0}
+  .switch-row span{font-size:14px}
+  .switch-row small{display:block;font-size:11.5px;color:#9aa6b3;margin-top:1px;font-weight:400}
+  .sw{position:relative;width:46px;height:27px;flex:0 0 auto}
+  .sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;z-index:2;cursor:pointer}
+  .sw i{position:absolute;inset:0;background:#d7dee6;border-radius:99px;transition:background .2s}
+  .sw i::after{
+    content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:transform .2s;
+  }
+  .sw input:checked + i{background:#1d9bf0}
+  .sw input:checked + i::after{transform:translateX(19px)}
+
+  .seg{display:flex;gap:4px;background:#eff2f6;padding:3px;border-radius:10px}
+  .seg button{
+    flex:1;border:0;background:transparent;padding:8px 2px;border-radius:8px;
+    font-size:12.5px;font-weight:600;color:#6b7a8c;font-family:inherit;cursor:pointer;
+    transition:.15s;white-space:nowrap;
+  }
+  .seg button.on{background:#fff;color:#0f1419;box-shadow:0 1px 3px rgba(15,20,25,.11)}
+
+  .num{position:relative}
+  .num input{padding-right:36px}
+  .num .dice{
+    position:absolute;right:2px;top:50%;transform:translateY(-50%);
+    width:33px;height:33px;border:0;background:transparent;border-radius:9px;
+    display:grid;place-items:center;cursor:pointer;color:#a3aeba;padding:0;
+  }
+  .num .dice:active{background:#e6eef7;color:#1d9bf0}
+  .num .dice svg{width:18px;height:18px}
+
+  .upload{
+    border:1.5px dashed #d5dde6;border-radius:11px;padding:15px;
+    text-align:center;font-size:13px;color:#93a1af;cursor:pointer;
+    background:#fafbfc;transition:.15s;position:relative;overflow:hidden;line-height:1.4;
+  }
+  .upload:active{border-color:#1d9bf0;background:#f2f9ff}
+  .upload.has{border-style:solid;border-color:#e4e8ee;padding:0;background:#f7f9fb}
+  .upload img{display:block;width:100%;height:auto;max-height:160px;object-fit:cover}
+  .upload .clr{
+    position:absolute;top:6px;right:6px;width:27px;height:27px;border-radius:50%;
+    background:rgba(15,20,25,.7);color:#fff;border:0;display:grid;place-items:center;
+    font-size:14px;line-height:1;cursor:pointer;padding:0;
+  }
+  input[type=file]{display:none}
+
+  .actionbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.92);
+    backdrop-filter:saturate(180%) blur(18px);-webkit-backdrop-filter:saturate(180%) blur(18px);
+    border-top:1px solid rgba(15,20,25,.07);
+  }
+  .actionbar .inner{max-width:560px;margin:0 auto;display:flex;gap:9px}
+  .btn{
+    border:0;border-radius:11px;padding:13px 16px;font-size:15px;font-weight:700;
+    font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+    transition:transform .1s,opacity .15s;
+  }
+  .btn:active{transform:scale(.975)}
+  .btn svg{width:17px;height:17px;flex:0 0 auto}
+  .btn-ghost{background:#e9eef4;color:#0f1419;flex:0 0 auto}
+  .btn-primary{background:#0f1419;color:#fff;flex:1}
+  .btn-blue{background:#1d9bf0;color:#fff}
+
+  .sheet{
+    position:fixed;inset:0;z-index:60;background:rgba(10,14,20,.55);
+    display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);
+  }
+  .sheet.on{display:flex}
+  .sheet-body{
+    background:#fff;width:100%;max-width:560px;border-radius:19px 19px 0 0;
+    padding:15px 16px calc(16px + env(safe-area-inset-bottom));
+    max-height:93vh;overflow:auto;animation:up .26s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes up{from{transform:translateY(26px);opacity:.5}to{transform:none;opacity:1}}
+  .sheet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .sheet-h b{font-size:16px}
+  .sheet-h button{border:0;background:#eef2f6;width:31px;height:31px;border-radius:50%;font-size:16px;color:#6b7a8c;cursor:pointer;padding:0;line-height:1}
+  .sheet img{display:block;width:100%;height:auto;border-radius:12px;border:1px solid #eef2f6;background:#fff}
+  .tip{font-size:12.5px;color:#93a1af;text-align:center;margin:11px 0 13px;line-height:1.55}
+  .sheet-actions{display:flex;gap:9px}
+  .sheet-actions .btn{flex:1}
+  .toast{
+    position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translate(-50%,8px);
+    background:rgba(15,20,25,.93);color:#fff;padding:9px 16px;border-radius:99px;
+    font-size:13px;z-index:80;opacity:0;pointer-events:none;transition:.22s;white-space:nowrap;
+  }
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+[hidden]{display:none!important}
+html{scroll-padding-top:80px}
+body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+button,input,textarea{touch-action:manipulation}
+button:focus-visible{outline:3px solid #1d9bf0;outline-offset:3px}
+.hd-btn,.seg button{min-height:44px}
+.num .dice{width:40px;height:44px}
+.num input{padding-right:42px}
+.sheet-h button{width:44px;height:44px}
+.sheet-body{max-height:90vh;max-height:90dvh;overscroll-behavior:contain}
+.sheet-actions{flex-wrap:wrap}
+.sheet-actions .btn{min-width:130px}
+.preview-toggle{display:none}
+input,textarea{scroll-margin-top:80px}
+@media(max-width:600px){
+.topbar{padding-top:max(8px,env(safe-area-inset-top))}
+.preview-wrap{position:relative;top:auto}
+.preview-card,.preview-wrap.shrink .preview-card{max-height:42vh;max-height:42dvh}
+.preview-wrap.expanded .preview-card{max-height:none}
+.preview-toggle{display:block;margin:8px auto 0;border:0;background:transparent;color:#536471;min-height:44px;padding:8px 16px;font:inherit;font-size:13px}
+.upload{min-height:58px}
+.actionbar .btn{min-height:48px}
+body.keyboard-open .actionbar{display:none}
+}
+.advanced summary{cursor:pointer;min-height:44px;font-size:14px;font-weight:600;line-height:24px}.advanced summary span{display:block;font-size:12px;font-weight:400;color:#8b98a5;margin-left:18px}.advanced-body{padding-top:16px}.advanced-body>.hd-btn{margin-bottom:16px}#autoHandle{margin-top:8px}textarea{min-height:150px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="x"><svg viewBox="0 0 24 24"><path d="M18.9 2H22l-7.1 8.1L23.2 22h-6.6l-5.2-6.8L5.4 22H2.3l7.6-8.7L2 2h6.8l4.7 6.2L18.9 2Zm-1.1 18h1.8L7.3 3.9H5.4L17.8 20Z"/></svg></span>
+      <span>推文卡片</span><small>生成器</small>
+    </div>
+    <button class="hd-btn" id="btnReset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      重置
+    </button>
+  </div>
+
+  <div class="preview-wrap">
+    <div class="preview-card"><canvas id="stage" aria-label="推文实时预览"></canvas></div><button class="preview-toggle" id="previewToggle" aria-expanded="false">展开完整预览</button>
+  </div>
+
+  <div class="panel">
+    <div class="card">
+      <div class="field"><label for="name">账号名称</label><input type="text" id="name" maxlength="40" placeholder="输入账号名称"></div>
+      <div class="field"><label>头像</label><div class="upload" id="avatarBox"><span id="avatarHint">点击上传头像</span><input type="file" id="avatarFile" accept="image/*" aria-label="上传头像"></div></div>
+    </div>
+    <div class="card">
+      <div class="field"><label for="text">推文内容</label><textarea id="text" placeholder="写下你的内容，空一行即可分段"></textarea></div>
+    </div>
+    <details class="card advanced" id="advanced">
+      <summary>高级设置<span>账号、配图、互动数据与主题</span></summary>
+      <div class="advanced-body">
+        <div class="field"><label for="handle">用户名（自动生成，可修改）</label><input type="text" id="handle" maxlength="20" autocapitalize="none" spellcheck="false"><button type="button" class="hd-btn" id="autoHandle">恢复自动缩写</button></div>
+        <div class="field switch-row"><span>蓝标认证</span><label class="sw"><input type="checkbox" id="verified" aria-label="蓝标认证"><i></i></label></div>
+        <div class="field"><label for="time">发布时间</label><input type="text" id="time" placeholder="5天"></div>
+        <div class="field"><label>配图（可选）</label><div class="upload" id="mediaBox"><span id="mediaHint">点击上传图片</span><input type="file" id="mediaFile" accept="image/*" aria-label="上传配图"></div></div>
+        <div class="field switch-row"><span>生成时随机互动数据<small>关闭后保留手动设置的数值</small></span><label class="sw"><input type="checkbox" id="autoRandom" checked aria-label="生成时随机互动数据"><i></i></label></div>
+        <div class="field"><label>热度档位</label><div class="seg" id="tierSeg"><button data-tier="low">日常</button><button data-tier="mid" class="on">一般</button><button data-tier="high">小爆</button><button data-tier="viral">爆款</button></div></div>
+        <div class="field row2">
+          <div><label for="replies">评论</label><div class="num"><input type="number" id="replies" min="0" inputmode="numeric"><button class="dice" data-for="replies" type="button"></button></div></div><div><label for="retweets">转发</label><div class="num"><input type="number" id="retweets" min="0" inputmode="numeric"><button class="dice" data-for="retweets" type="button"></button></div></div><div><label for="likes">点赞</label><div class="num"><input type="number" id="likes" min="0" inputmode="numeric"><button class="dice" data-for="likes" type="button"></button></div></div><div><label for="views">浏览</label><div class="num"><input type="number" id="views" min="0" inputmode="numeric"><button class="dice" data-for="views" type="button"></button></div></div>
+        </div>
+        <button class="hd-btn" id="btnRandom" type="button">随机一组数据</button>
+        <div class="field"><label>主题</label><div class="seg" id="themeSeg"><button data-theme="light" class="on">浅色</button><button data-theme="dark">深色</button></div></div>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="actionbar">
+  <div class="inner">
+<button class="btn btn-primary" id="btnExport">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 17v3h16v-3"/></svg>
+      生成图片
+    </button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-body">
+    <div class="sheet-h"><b>保存图片</b><button id="sheetClose">✕</button></div>
+    <img id="resultImg" alt="生成结果">
+    <p class="tip" id="sheetTip">手机上长按上方图片即可保存到相册</p>
+    <div class="sheet-actions">
+      <button class="btn btn-blue" id="btnShare" hidden>分享 / 存储图像</button><button class="btn btn-blue" id="btnDownload">下载 PNG</button>
+      <button class="btn btn-ghost" id="btnCopy">复制图片</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ==========================================================
+   X 推文卡片生成器 — 纯 Canvas 绘制
+   逻辑坐标以 400px 宽为基准，导出 3 倍图（1200px）
+   ========================================================== */
+
+const S = 3;
+const W = 402;
+
+const FONT = '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif';
+
+const M = {                       // 排版度量（对齐 X 真实截图）
+  padX: 12,
+  padTop: 8,
+  padBottom: 12,
+  avatar: 40,
+  gapAvatar: 12,
+  nameSize: 15,
+  nameLH: 20,
+  bodySize: 15,
+  bodyLH: 21.4,
+  metaSize: 15,
+  icon: 18.75,
+  labelSize: 12.5,
+  gapNameBody: 2,
+  actionGapTop: 8.5,
+  actionH: 20,
+  badgeRatio: 0.92,
+};
+
+const CX = M.padX + M.avatar + M.gapAvatar;      // 68  内容左边界
+const CW = W - CX - M.padX;                      // 316 内容宽度
+
+const BLUE = '#1D9BF0';
+
+const THEMES = {
+  light: { bg:'#FFFFFF', text:'#0F1419', dim:'#536471', icon:'#536471', mediaBorder:'#CFD9DE', avBg:'#CFD9DE', avFg:'#FFFFFF', placeholder:'#EFF3F4' },
+  dark:  { bg:'#000000', text:'#E7E9EA', dim:'#71767B', icon:'#71767B', mediaBorder:'#2F3336', avBg:'#2F3336', avFg:'#71767B', placeholder:'#16181C' },
+};
+
+/* ---------------- 状态 ---------------- */
+const DEFAULT = {
+  name: '西兰花费算力',
+  handle: 'xlhfsl',
+  verified: true,
+  text: '',
+  time: '5天',
+  replies: 1,
+  retweets: 6,
+  likes: 18,
+  views: 24000,
+  tier: 'mid',
+  theme: 'light',
+  avatarImg: null,
+  mediaImg: null,
+};
+const state = Object.assign({}, DEFAULT);
+let automaticHandle = true;
+// GB2312 level-one characters are arranged in pinyin order. Decode each
+// range once into a lookup table; do not infer initials from collation of
+// sample characters (e.g. 西 sorts before 昔 despite sharing the same initial).
+const initialLetters = 'abcdefghjklmnopqrstwxyz';
+const initialCodes = [-20319,-20284,-19776,-19219,-18711,-18527,-18240,-17923,-17418,-16474,-16212,-15641,-15165,-14922,-14914,-14630,-14149,-14090,-13318,-12838,-12556,-11848,-11056];
+const chineseInitials = new Map();
+const chineseDecoder = new TextDecoder('gb18030');
+for (let high = 176; high <= 215; high++) {
+  for (let low = 161; low <= (high === 215 ? 249 : 254); low++) {
+    const code = high * 256 + low - 65536;
+    let index = initialCodes.length - 1;
+    while (index > 0 && code < initialCodes[index]) index--;
+    chineseInitials.set(chineseDecoder.decode(new Uint8Array([high, low])), initialLetters[index]);
+  }
+}
+function nameInitials(name) {
+  return Array.from(name.trim()).map(ch => {
+    if (/[a-z0-9]/i.test(ch)) return ch.toLowerCase();
+    if (!/[\u3400-\u9fff]/.test(ch)) return '';
+    return chineseInitials.get(ch) || 'u';
+  }).join('').slice(0,20) || 'user';
+}
+
+/* ==========================================================
+   工具
+   ========================================================== */
+const mcv = document.createElement('canvas');
+const mctx = mcv.getContext('2d');
+
+function roundRect(ctx, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+/* ---- 断行：中文按字，西文按词，处理避头尾 ---- */
+const NO_START = '，。、；：？！）】》」』〉〕”’·…—～,.;:?!)]}%';
+const NO_END   = '（【《「『〈〔“‘([{';
+
+function tokenize(text) {
+  const out = [];
+  const re = /[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]|[^\s\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]+|\s+/g;
+  let m;
+  while ((m = re.exec(text)) !== null) out.push(m[0]);
+  return out;
+}
+
+function wrap(text, maxW, font) {
+  mctx.font = font;
+  if (mctx.measureText(text).width <= maxW) return [text];
+
+  const tk = tokenize(text);
+  const lines = [];
+  let cur = '';
+
+  const push = s => {
+    const v = s.replace(/\s+$/, '');
+    if (v !== '' || lines.length === 0) lines.push(v);
+  };
+
+  for (const t of tk) {
+    if (/^\s+$/.test(t)) { if (cur) cur += t; continue; }
+    if (mctx.measureText(cur + t).width <= maxW) { cur += t; continue; }
+
+    if (NO_START.includes(t[0]) && cur !== '') { push(cur + t); cur = ''; continue; }
+
+    const lastCh = cur.slice(-1);
+    if (NO_END.includes(lastCh) && cur.length > 1) {
+      push(cur.slice(0, -1));
+      cur = lastCh + t;
+      continue;
+    }
+
+    if (cur === '' && mctx.measureText(t).width > maxW) {
+      let buf = '';
+      for (const ch of t) {
+        if (buf && mctx.measureText(buf + ch).width > maxW) { push(buf); buf = ch; }
+        else buf += ch;
+      }
+      cur = buf;
+      continue;
+    }
+
+    push(cur);
+    cur = t;
+  }
+  if (cur.replace(/\s+$/, '') !== '' || lines.length === 0) push(cur);
+  return lines;
+}
+
+/* 正文 → 行数组（空行同样占一整行，符合 X 的真实行为） */
+function layoutBody(text, maxW, font) {
+  const raw = (text || '').replace(/\r\n/g, '\n').split('\n');
+  const rows = [];
+  for (const line of raw) {
+    if (line.trim() === '') { rows.push(''); continue; }
+    wrap(line, maxW, font).forEach(l => rows.push(l));
+  }
+  while (rows.length && rows[rows.length - 1] === '') rows.pop();
+  return rows;
+}
+
+/* ---- 数字格式（X 中文界面风格） ---- */
+function fmt(n) {
+  n = Math.max(0, Math.round(Number(n) || 0));
+  if (n < 1000) return String(n);
+  if (n < 10000) return n.toLocaleString('en-US');
+  if (n < 1e8) {
+    const v = n / 1e4;
+    return (v >= 100 ? String(Math.round(v)) : (v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, ''))) + '万';
+  }
+  const v = n / 1e8;
+  return (v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '')) + '亿';
+}
+
+/* ==========================================================
+   蓝标：8 瓣花形 + 白色对勾
+   ========================================================== */
+function drawBadge(ctx, cx, cy, size) {
+  const R = size / 2;
+  ctx.save();
+  ctx.beginPath();
+  const N = 512;
+  for (let i = 0; i <= N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const r = R * (0.88 + 0.12 * Math.cos(8 * a));
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = BLUE;
+  ctx.fill();
+
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = R * 0.27;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - R * 0.35, cy + R * 0.02);
+  ctx.lineTo(cx - R * 0.11, cy + R * 0.26);
+  ctx.lineTo(cx + R * 0.36, cy - R * 0.23);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ==========================================================
+   图标（24×24 坐标系）
+   ========================================================== */
+const ICONS = {
+  reply: c => { c.moveTo(20.5, 11.2); c.arc(12, 11.2, 8.5, 0, Math.PI * 2); },
+  retweet: c => {
+    c.moveTo(6.0, 8.6); c.lineTo(15.2, 8.6); c.lineTo(12.2, 5.4);
+    c.moveTo(18.0, 15.4); c.lineTo(8.8, 15.4); c.lineTo(11.8, 18.6);
+  },
+  like: c => {
+    c.moveTo(12, 20.2);
+    c.bezierCurveTo(12, 20.2, 3.4, 15.1, 3.4, 9.1);
+    c.bezierCurveTo(3.4, 6.0, 5.9, 3.9, 8.5, 3.9);
+    c.bezierCurveTo(10.3, 3.9, 11.5, 4.9, 12, 5.9);
+    c.bezierCurveTo(12.5, 4.9, 13.7, 3.9, 15.5, 3.9);
+    c.bezierCurveTo(18.1, 3.9, 20.6, 6.0, 20.6, 9.1);
+    c.bezierCurveTo(20.6, 15.1, 12, 20.2, 12, 20.2);
+    c.closePath();
+  },
+  views: c => {
+    c.moveTo(4, 20.4);  c.lineTo(4, 15.0);
+    c.moveTo(9.3, 20.4); c.lineTo(9.3, 10.2);
+    c.moveTo(14.7, 20.4); c.lineTo(14.7, 13.0);
+    c.moveTo(20, 20.4);  c.lineTo(20, 4.6);
+  },
+  bookmark: c => {
+    c.moveTo(5.6, 4.2); c.lineTo(18.4, 4.2); c.lineTo(18.4, 20.4);
+    c.lineTo(12, 15.2); c.lineTo(5.6, 20.4); c.closePath();
+  },
+  share: c => {
+    c.moveTo(12, 3.0); c.lineTo(12, 14.8);
+    c.moveTo(8.0, 6.9); c.lineTo(12, 3.0); c.lineTo(16.0, 6.9);
+    c.moveTo(20.4, 13.2); c.lineTo(20.4, 18.6); c.lineTo(3.6, 18.6); c.lineTo(3.6, 13.2);
+  },
+};
+
+function drawIcon(ctx, name, x, y, size, color, lw) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 24, size / 24);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw || 1.9;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ICONS[name](ctx);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ==========================================================
+   布局计算
+   ========================================================== */
+const nameFont = `700 ${M.nameSize}px ${FONT}`;
+const bodyFont = `400 ${M.bodySize}px ${FONT}`;
+const metaFont = `400 ${M.metaSize}px ${FONT}`;
+
+function buildLayout(st) {
+  const t = THEMES[st.theme] || THEMES.light;
+  const badge = M.nameSize * M.badgeRatio;
+
+  /* --- 名字行 --- */
+  mctx.font = nameFont;
+  let nameW = mctx.measureText(st.name || '').width;
+
+  mctx.font = metaFont;
+  const handleStr = '@' + (st.handle || '');
+  const timeStr = ' · ' + (st.time || '');
+  const handleW = mctx.measureText(handleStr).width;
+  const timeW = mctx.measureText(timeStr).width;
+
+  const gapL = 3.5, gapR = 4;
+  const fixedW = (st.verified ? badge + gapL + gapR : 0) + handleW + timeW;
+  const nameMax = CW - fixedW;
+
+  let nameDraw = st.name || '';
+  mctx.font = nameFont;
+  if (nameW > nameMax && nameMax > 6) {
+    let s = nameDraw;
+    while (s.length > 1 && mctx.measureText(s + '…').width > nameMax) s = s.slice(0, -1);
+    nameDraw = s + '…';
+    nameW = mctx.measureText(nameDraw).width;
+  }
+
+  /* --- 正文 --- */
+  const bodyRows = layoutBody(st.text || '', CW, bodyFont);
+  const bodyH = bodyRows.length * M.bodyLH;
+
+  /* --- 配图 --- */
+  let mediaH = 0;
+  if (st.mediaImg && st.mediaImg.naturalWidth) {
+    mediaH = CW * st.mediaImg.naturalHeight / st.mediaImg.naturalWidth;
+    mediaH = Math.min(mediaH, 330);
+  }
+
+  /* --- 互动栏 --- */
+  const labels = [fmt(st.replies), fmt(st.retweets), fmt(st.likes), fmt(st.views)];
+  const action = layoutActions(labels);
+
+  const gapBodyMedia = mediaH > 0 ? 10 : 0;
+  const totalH = M.padTop + M.nameLH + M.gapNameBody + bodyH + gapBodyMedia + mediaH
+               + M.actionGapTop + action.h + M.padBottom;
+
+  return {
+    t, badge, gapL, gapR, nameDraw, nameW, handleStr, handleW, timeStr, timeW,
+    bodyRows, bodyH, mediaH, gapBodyMedia, action, totalH,
+  };
+}
+
+/* 互动栏：左侧 4 列等距（原图实测 69.25px/列），右侧书签+分享固定靠右 */
+const RIGHT_ZONE = 47;                             // 书签 + 分享 占位宽度
+
+function layoutActions(labels) {
+  const step = (CW - RIGHT_ZONE) / 4;              // 69.25
+  const room = step - M.icon - 4;                  // 留给数字的基础宽度
+
+  const tries = [12.5, 12, 11.5, 11, 10.5, 10, 9.5, 9];
+  let fs = tries[tries.length - 1], f = `400 ${fs}px ${FONT}`;
+  for (const t of tries) {
+    const ff = `400 ${t}px ${FONT}`;
+    mctx.font = ff;
+    if (labels.every(l => mctx.measureText(l).width <= room)) { fs = t; f = ff; break; }
+  }
+  mctx.font = f;
+
+  /* 极端长数字（如 9877万）仍可能顶到右侧书签图标：
+     以书签图标的实际左边缘为上界，越界就整体降字号，直到安全 */
+  const bookmarkLeft = (W - 52.5) - M.icon / 2;     // 340.1
+  const limit = bookmarkLeft - 7;                   // 留 7px 安全间距
+
+  let guard = 0;
+  while (guard++ < 30) {
+    mctx.font = f;
+    const lastRight = CX + 3 * step + M.icon + 4 + mctx.measureText(labels[3]).width;
+    if (lastRight <= limit) break;
+    fs -= 0.5;
+    if (fs <= 7) { fs = 7; f = `400 ${fs}px ${FONT}`; break; }
+    f = `400 ${fs}px ${FONT}`;
+  }
+
+  return { font: f, labelSize: fs, labels, step, h: M.actionH };
+}
+
+/* ==========================================================
+   绘制
+   ========================================================== */
+function paint(canvas, st) {
+  const L = buildLayout(st);
+  const t = L.t;
+
+  canvas.width = Math.round(W * S);
+  canvas.height = Math.round(L.totalH * S);
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+
+  ctx.fillStyle = t.bg;
+  ctx.fillRect(0, 0, W, L.totalH);
+
+  let y = M.padTop;
+
+  /* ---------- 头像 ---------- */
+  const ax = M.padX, ar = M.avatar / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(ax + ar, y + ar, ar, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  if (st.avatarImg && st.avatarImg.naturalWidth) {
+    const im = st.avatarImg;
+    const k = Math.max(M.avatar / im.naturalWidth, M.avatar / im.naturalHeight);
+    const dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+    ctx.drawImage(im, ax + (M.avatar - dw) / 2, y + (M.avatar - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = t.avBg;
+    ctx.fillRect(ax, y, M.avatar, M.avatar);
+    ctx.fillStyle = t.avFg;
+    const c1 = ax + ar, c2 = y + ar;
+    ctx.beginPath(); ctx.arc(c1, c2 - ar * 0.2, ar * 0.33, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(c1, c2 + ar * 0.66, ar * 0.6, Math.PI, 0); ctx.fill();
+  }
+  ctx.restore();
+
+  /* ---------- 名字行 ---------- */
+  const baseY = y + M.nameLH * 0.79;
+  let cx = CX;
+
+  ctx.font = nameFont;
+  ctx.fillStyle = t.text;
+  ctx.fillText(L.nameDraw, cx, baseY);
+  cx += L.nameW;
+
+  if (st.verified) {
+    cx += L.gapL;
+    drawBadge(ctx, cx + L.badge / 2, y + M.nameLH * 0.53, L.badge);
+    cx += L.badge + L.gapR;
+  }
+
+  ctx.font = metaFont;
+  ctx.fillStyle = t.dim;
+  ctx.fillText(L.handleStr, cx, baseY);
+  cx += L.handleW;
+  ctx.fillText(L.timeStr, cx, baseY);
+
+  y += M.nameLH + M.gapNameBody;
+
+  /* ---------- 正文 ---------- */
+  ctx.font = bodyFont;
+  ctx.fillStyle = t.text;
+  L.bodyRows.forEach((row, i) => {
+    if (row) ctx.fillText(row, CX, y + M.bodyLH * 0.76 + i * M.bodyLH);
+  });
+  y += L.bodyH;
+
+  /* ---------- 配图 ---------- */
+  if (mediaH(L) > 0 && st.mediaImg) {
+    y += L.gapBodyMedia;
+    const im = st.mediaImg, dw = CW, dh = L.mediaH;
+    const k = Math.max(dw / im.naturalWidth, dh / im.naturalHeight);
+    const sw = dw / k, sh = dh / k;
+    const sx = (im.naturalWidth - sw) / 2, sy = (im.naturalHeight - sh) / 2;
+
+    ctx.save();
+    roundRect(ctx, CX, y, dw, dh, 16);
+    ctx.clip();
+    ctx.drawImage(im, sx, sy, sw, sh, CX, y, dw, dh);
+    ctx.restore();
+
+    ctx.save();
+    roundRect(ctx, CX + .5, y + .5, dw - 1, dh - 1, 16);
+    ctx.strokeStyle = t.mediaBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    y += dh;
+  }
+
+  /* ---------- 互动栏 ---------- */
+  y += M.actionGapTop;
+  const A = L.action;
+  const iconY = y + (M.actionH - M.icon) / 2;
+  const labelBaseY = y + M.actionH / 2 + A.labelSize * 0.36;
+
+  const keys = ['reply', 'retweet', 'like', 'views'];
+  for (let i = 0; i < 4; i++) {
+    const gx = CX + i * A.step;
+    drawIcon(ctx, keys[i], gx, iconY, M.icon, t.icon, 1.9);
+    ctx.font = A.font;
+    ctx.fillStyle = t.icon;
+    ctx.fillText(A.labels[i], gx + M.icon + 4, labelBaseY);
+  }
+
+  // 右侧：书签、分享（中心位置按原图实测：距右边 52.5 / 19.15）
+  const bkC = W - 52.5, shC = W - 19.15;
+  drawIcon(ctx, 'bookmark', bkC - M.icon / 2, iconY, M.icon, t.icon, 1.9);
+  drawIcon(ctx, 'share',    shC - M.icon / 2, iconY, M.icon, t.icon, 1.9);
+
+  return canvas;
+}
+
+function mediaH(L) { return L.mediaH; }
+
+/* ==========================================================
+   随机
+   ========================================================== */
+const TIERS = {
+  low:   { views: [600, 12000],       likeRate: [.05, .13],  mins: [1, 50] },
+  mid:   { views: [12000, 150000],    likeRate: [.03, .075], mins: [30, 420] },
+  high:  { views: [150000, 1200000],  likeRate: [.02, .05],  mins: [150, 1200] },
+  viral: { views: [1200000, 25000000],likeRate: [.012, .035],mins: [600, 8640] },
+};
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const oneOf = arr => arr[Math.floor(Math.random() * arr.length)];
+
+function randTime(mins) {
+  if (mins < 1) mins = 1;
+  if (mins < 60) return mins + '分钟';
+  if (mins < 60 * 24) return Math.round(mins / 60) + '小时';
+  if (mins < 60 * 24 * 7) return Math.round(mins / (60 * 24)) + '天';
+  const d = new Date(Date.now() - mins * 60000);
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+}
+
+function randomize() {
+  const c = TIERS[state.tier] || TIERS.mid;
+
+  const views = Math.round(rnd(c.views[0], c.views[1]));
+  const likes = Math.max(0, Math.round(views * rnd(c.likeRate[0], c.likeRate[1])));
+  let retweets = Math.max(0, Math.round(likes * rnd(0.05, 0.16)));
+  let replies = Math.max(0, Math.round(retweets * rnd(0.06, 0.45)));
+  if (replies > retweets) replies = retweets;
+
+  state.views = views;
+  state.likes = likes;
+  state.retweets = retweets;
+  state.replies = replies;
+
+}
+
+/* ==========================================================
+   UI
+   ========================================================== */
+const $ = id => document.getElementById(id);
+const stage = $('stage');
+
+const el = {
+  name: $('name'), handle: $('handle'), verified: $('verified'),
+  text: $('text'), time: $('time'),
+  replies: $('replies'), retweets: $('retweets'), likes: $('likes'), views: $('views'),
+};
+
+const DICE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4.2"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>';
+document.querySelectorAll('.dice').forEach(b => { b.innerHTML = DICE; });
+
+function syncInputs() {
+  el.name.value = state.name;
+  el.handle.value = state.handle;
+  el.verified.checked = state.verified;
+  el.text.value = state.text;
+  el.time.value = state.time;
+  el.replies.value = state.replies;
+  el.retweets.value = state.retweets;
+  el.likes.value = state.likes;
+  el.views.value = state.views;
+}
+
+let raf = 0;
+function render() {
+  if (raf) cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => {
+    raf = 0;
+    try { paint(stage, state); } catch (e) { console.error(e); }
+  });
+}
+
+/* 文本类输入 */
+[['name','name'], ['handle','handle'], ['text','text'], ['time','time']].forEach(([id, k]) => {
+  el[id].addEventListener('input', () => { state[k] = el[id].value;
+    if (k === 'handle') automaticHandle = false;
+    if (k === 'name' && automaticHandle) { state.handle = nameInitials(state.name); el.handle.value = state.handle; }
+    render(); });
+});
+
+el.verified.addEventListener('change', () => { state.verified = el.verified.checked; render(); });
+
+/* 数字输入 */
+['replies','retweets','likes','views'].forEach(k => {
+  el[k].addEventListener('input', () => {
+    const v = parseInt(el[k].value, 10);
+    state[k] = isNaN(v) ? 0 : Math.max(0, v);
+    $('autoRandom').checked = false;
+    render();
+  });
+  el[k].addEventListener('blur', () => { el[k].value = state[k]; });
+});
+
+/* 单字段骰子 */
+document.querySelectorAll('.dice').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const k = btn.dataset.for;
+    const c = TIERS[state.tier] || TIERS.mid;
+
+    if (k === 'views') {
+      state.views = Math.round(rnd(c.views[0], c.views[1]));
+    } else if (k === 'likes') {
+      const v = Math.max(state.views, 500);
+      state.likes = Math.max(0, Math.round(v * rnd(c.likeRate[0], c.likeRate[1])));
+    } else if (k === 'retweets') {
+      const base = Math.max(state.likes, 1);
+      state.retweets = Math.max(0, Math.round(base * rnd(0.05, 0.16)));
+    } else {
+      const base = Math.max(state.retweets, 1);
+      state.replies = Math.max(0, Math.round(base * rnd(0.06, 0.45)));
+    }
+    el[k].value = state[k];
+    $('autoRandom').checked = false;
+    render();
+  });
+});
+
+/* 档位 */
+document.querySelectorAll('#tierSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#tierSeg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    state.tier = b.dataset.tier;
+    randomize(); syncInputs(); render();
+  });
+});
+
+/* 主题 */
+document.querySelectorAll('#themeSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#themeSeg button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    state.theme = b.dataset.theme;
+    render();
+  });
+});
+
+/* 图片上传 */
+function bindUpload(boxId, hintId, fileId, key) {
+  const box = $(boxId), hint = $(hintId), file = $(fileId);
+
+  box.addEventListener('click', e => {
+    if (e.target.closest('.clr')) {
+      e.preventDefault(); e.stopPropagation();
+      state[key] = null;
+      file.value = '';
+      box.classList.remove('has');
+      const im = box.querySelector('img'); if (im) im.remove();
+      const cl = box.querySelector('.clr'); if (cl) cl.remove();
+      hint.style.display = '';
+      render();
+      return;
+    }
+    if (e.target !== file) file.click();
+  });
+
+  file.addEventListener('change', () => {
+    const f = file.files && file.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.onload = () => {
+      state[key] = img;
+      box.classList.add('has');
+      let inner = box.querySelector('img');
+      if (!inner) { inner = document.createElement('img'); box.insertBefore(inner, file); }
+      inner.src = url;
+      hint.style.display = 'none';
+      if (!box.querySelector('.clr')) {
+        const cl = document.createElement('button');
+        cl.className = 'clr'; cl.type = 'button'; cl.textContent = '✕';
+        box.appendChild(cl);
+      }
+      render();
+    };
+    img.onerror = () => toast('图片读取失败');
+    img.src = url;
+  });
+}
+bindUpload('avatarBox', 'avatarHint', 'avatarFile', 'avatarImg');
+bindUpload('mediaBox', 'mediaHint', 'mediaFile', 'mediaImg');
+
+/* 随机 */
+$('btnRandom').addEventListener('click', () => {
+  randomize(); syncInputs(); render();
+  toast('已随机生成');
+});
+
+/* 重置 */
+$('btnReset').addEventListener('click', () => {
+  automaticHandle = true;
+  $('autoRandom').checked = true;
+  $('advanced').open = false;
+  Object.assign(state, {
+    name: DEFAULT.name, handle: DEFAULT.handle, verified: DEFAULT.verified, time: DEFAULT.time,
+    text: DEFAULT.text, tier: DEFAULT.tier, theme: DEFAULT.theme,
+    avatarImg: null, mediaImg: null,
+  });
+  randomize();
+  syncInputs();
+
+  // 清掉上传预览
+  [['avatarBox','avatarHint','avatarFile'], ['mediaBox','mediaHint','mediaFile']].forEach(([b, h, f]) => {
+    const box = $(b);
+    box.classList.remove('has');
+    const im = box.querySelector('img'); if (im) im.remove();
+    const cl = box.querySelector('.clr'); if (cl) cl.remove();
+    $(h).style.display = '';
+    $(f).value = '';
+  });
+
+  document.querySelectorAll('#themeSeg button').forEach(x => {
+    x.classList.toggle('on', x.dataset.theme === DEFAULT.theme);
+  });
+  document.querySelectorAll('#tierSeg button').forEach(x => {
+    x.classList.toggle('on', x.dataset.tier === DEFAULT.tier);
+  });
+
+  render();
+  toast('已重置');
+});
+
+/* 提示 */
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('on'), 1600);
+}
+
+/* 导出 */
+$('btnExport').addEventListener('click', () => {
+  if ($('autoRandom').checked) { randomize(); syncInputs(); }
+  paint(stage, state);
+  $('resultImg').src = stage.toDataURL('image/png');
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  $('sheetTip').textContent = isMobile
+    ? '长按图片保存，或点「分享 / 存储图像」后选择「存储图像」。下载 PNG 通常保存在「文件」App。'
+    : '点击下方按钮下载，或直接右键图片保存';
+  $('sheet').classList.add('on');
+});
+
+$('sheetClose').addEventListener('click', () => $('sheet').classList.remove('on'));
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) $('sheet').classList.remove('on'); });
+
+function fileName() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `x-post-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.png`;
+}
+
+$('btnDownload').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = fileName();
+  a.href = stage.toDataURL('image/png');
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('已请求下载，请查看浏览器下载列表');
+});
+
+$('btnCopy').addEventListener('click', async () => {
+  try {
+    const blob = await new Promise(r => stage.toBlob(r, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    toast('已复制到剪贴板');
+  } catch (e) {
+    toast('当前浏览器不支持复制，请长按保存');
+  }
+});
+
+$('autoHandle').addEventListener('click', () => {
+  automaticHandle = true;
+  state.handle = nameInitials(state.name);
+  syncInputs(); render();
+});
+/* 启动 */
+syncInputs();
+randomize();
+syncInputs();
+render();
+
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => render());
+}
+window.addEventListener('resize', render);
+
+/* 向下滚动时收缩预览，让表单有更大操作空间 */
+const pwrap = document.querySelector('.preview-wrap');
+let lastY = window.scrollY;
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  if (y > 40 && !pwrap.classList.contains('shrink')) pwrap.classList.add('shrink');
+  else if (y <= 12 && pwrap.classList.contains('shrink')) pwrap.classList.remove('shrink');
+  lastY = y;
+}, { passive: true });
+let exportFile = null;
+$('btnExport').addEventListener('click', () => {
+  exportFile = null;
+  $('btnShare').hidden = true;
+  stage.toBlob(blob => {
+    if (!blob) return;
+    exportFile = new File([blob], fileName(), {type:'image/png'});
+    $('btnShare').hidden = !(navigator.canShare && navigator.canShare({files:[exportFile]}));
+  }, 'image/png');
+});
+$('btnShare').addEventListener('click', async () => {
+  if (!exportFile) return;
+  try { await navigator.share({files:[exportFile]}); }
+  catch (e) { if (e.name !== 'AbortError') toast('分享未完成，可长按图片保存'); }
+});
+$('previewToggle').addEventListener('click', () => {
+  const expanded = document.querySelector('.preview-wrap').classList.toggle('expanded');
+  $('previewToggle').setAttribute('aria-expanded', String(expanded));
+  $('previewToggle').textContent = expanded ? '收起预览' : '展开完整预览';
+});
+function updateKeyboard() {
+  const editing = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+  const reduced = window.visualViewport && window.innerHeight - window.visualViewport.height > 120;
+  document.body.classList.toggle('keyboard-open', Boolean(editing && reduced));
+}
+if (window.visualViewport) window.visualViewport.addEventListener('resize', updateKeyboard);
+document.addEventListener('focusin', updateKeyboard);
+document.addEventListener('focusout', () => setTimeout(updateKeyboard, 100));
+document.querySelectorAll('.dice').forEach(b => b.setAttribute('aria-label', '随机生成' + ({replies:'评论数',retweets:'转发数',likes:'点赞数',views:'浏览数'}[b.dataset.for])));
+</script>
+</body>
+</html>
